@@ -1,0 +1,13 @@
+name: Internship Scraper Cron
+on:
+  schedule:
+    # Every day at 9 AM IST → 3:30 AM UTC
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping-flask-app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Curl Flask route
+        run: curl https://intern-scrapper.onrender.com/
