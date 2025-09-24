@@ -1,0 +1,6 @@
+Flask
+requests
+beautifulsoup4
+gspread
+oauth2client
+google-api-python-client
