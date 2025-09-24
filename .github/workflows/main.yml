@@ -10,4 +10,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Curl Flask route
-        run: curl https://intern-scrapper.onrender.com/
+        run: curl https://internship-bot-bilc.onrender.com//
