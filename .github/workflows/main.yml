@@ -1,0 +1,30 @@
+name: Internship Scraper Cron
+
+on:
+  schedule:
+    # 9 AM IST → 3:30 AM UTC
+    - cron: "30 3 * * *"
+    # 6 PM IST → 12:30 PM UTC
+    - cron: "30 12 * * *"
+  workflow_dispatch:  # allow manual run from Actions tab
+
+jobs:
+  ping-flask-app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Flask route
+        run: |
+          echo "🔄 Pinging Flask app..."
+          response=$(curl -s -w "\nHTTP_STATUS:%{http_code}\n" https://internship-bot-bilc.onrender.com/)
+          echo "$response"
+          
+          # Extract HTTP status code
+          status=$(echo "$response" | grep "HTTP_STATUS" | cut -d: -f2)
+
+          if [ "$status" -ne 200 ]; then
+            echo "❌ Request failed with status $status"
+            exit 1
+          fi
+          
+          echo "✅ Flask app responded successfully."
+
