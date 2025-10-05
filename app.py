@@ -191,9 +191,8 @@ def scrape_indeed(max_pages=1, query="internship", location="India"):
             jobs.append([title, company, loc, link])
 
     return jobs
+    
 
-
-@app.route("/jobs")
 def update_jobs():
     jobs = scrape_indeed(max_pages=5)
 
@@ -208,6 +207,11 @@ def update_jobs():
             new_count += 1
 
     return f"✅ Added {new_count} new internships from Indeed."
+@app.route("/health")
+def health():
+    return "OK", 200
+    
+
 
 
 if __name__ == "__main__":
