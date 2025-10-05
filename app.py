@@ -49,10 +49,19 @@ client = gspread.authorize(creds)
 service = build("sheets", "v4", credentials=creds)
 
 spreadsheet = client.open("Internships")
-sheet = spreadsheet.sheet1
+sheet1 = spreadsheet.sheet1  # Internshala
 spreadsheet_id = spreadsheet.id
 
+# Create or open Sheet2 for jobs
+try:
+    sheet2 = spreadsheet.worksheet("Jobs")
+except:
+    sheet2 = spreadsheet.add_worksheet(title="Jobs", rows="1000", cols="5")
 
+
+# -------------------------------
+# Internshala scraper
+# -------------------------------
 def scrape_internshala(max_pages=3):
     internships = []
     base_url = "https://internshala.com"
@@ -100,11 +109,11 @@ def scrape_internshala(max_pages=3):
 
 
 @app.route("/")
-def update_sheet():
+def update_internshala():
     internships = scrape_internshala(max_pages=10)
 
     # Get all existing links in the sheet to avoid duplicates
-    existing_links = sheet.col_values(3)  # 3rd column = Link
+    existing_links = sheet1.col_values(3)  # 3rd column = Link
 
     requests_body = []
     new_count = 0
@@ -115,7 +124,7 @@ def update_sheet():
 
         if link not in existing_links:
             # Insert at row 2 (just below header)
-            sheet.insert_row(internship, 2)
+            sheet1.insert_row(internship, 2)
             new_count += 1
 
             # Prepare color formatting request for this row
@@ -146,8 +155,59 @@ def update_sheet():
             body={"requests": requests_body}
         ).execute()
 
-    return f"✅ Added {new_count} new internships (latest on top)."
+    return f"✅ Added {new_count} new internships from Internshala."
 
+
+# -------------------------------
+# Indeed scraper
+# -------------------------------
+def scrape_indeed(max_pages=1, query="internship", location="India"):
+    base_url = "https://in.indeed.com/jobs"
+    jobs = []
+
+    for page in range(0, max_pages * 10, 10):  # 10 jobs per page
+        params = {"q": query, "l": location, "start": page}
+        response = requests.get(base_url, params=params, headers={"User-Agent": "Mozilla/5.0"})
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        listings = soup.find_all("div", class_="job_seen_beacon")
+        if not listings:
+            print(f"⚠️ No jobs found on page {page//10+1}")
+            continue
+
+        for listing in listings:
+            title_tag = listing.find("h2")
+            title = title_tag.get_text(strip=True) if title_tag else "N/A"
+
+            company_tag = listing.find("span", class_="companyName")
+            company = company_tag.get_text(strip=True) if company_tag else "N/A"
+
+            location_tag = listing.find("div", class_="companyLocation")
+            loc = location_tag.get_text(strip=True) if location_tag else "N/A"
+
+            link_tag = listing.find("a")
+            link = "https://in.indeed.com" + link_tag["href"] if link_tag else "N/A"
+
+            jobs.append([title, company, loc, link])
+
+    return jobs
+
+
+@app.route("/jobs")
+def update_jobs():
+    jobs = scrape_indeed(max_pages=5)
+
+    # Avoid duplicates (check existing links)
+    existing_links = sheet2.col_values(4)  # link is 4th column
+    new_count = 0
+
+    for job in jobs:
+        link = job[3]
+        if link not in existing_links:
+            sheet2.insert_row(job, 2)  # insert on top
+            new_count += 1
+
+    return f"✅ Added {new_count} new internships from Indeed."
 
 
 if __name__ == "__main__":
