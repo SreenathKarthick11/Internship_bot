@@ -14,27 +14,20 @@ jobs:
   ping-flask-app:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Flask app with retries
+      - name: Ping Unified Scraper (/update_all)
         run: |
-          echo "🔄 Pinging Flask app..."
-          URL="https://internship-bot-bilc.onrender.com/health"
-
+          echo "🔄 Pinging unified scraper (Internshala + Indeed)..."
+          URL="https://internship-bot-bilc.onrender.com/update_all"
           for i in {1..5}; do
             response=$(curl -s -w "\nHTTP_STATUS:%{http_code}\n" "$URL" || true)
             echo "$response"
-
             status=$(echo "$response" | grep "HTTP_STATUS" | cut -d: -f2)
-
             if [ "$status" -eq 200 ]; then
-              echo "✅ Flask app responded successfully."
+              echo "✅ Unified scraper ran successfully."
               exit 0
             fi
-
             echo "⚠️ Attempt $i failed with status $status. Retrying in 20s..."
             sleep 20
           done
-
-          echo "❌ App did not respond after 5 retries."
+          echo "❌ Unified scraper did not respond after 5 retries."
           exit 1
-
-

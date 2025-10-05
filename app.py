@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from googleapiclient.discovery import build
-
+import os 
 # Flask app
 app = Flask(__name__)
 
@@ -192,7 +192,7 @@ def scrape_indeed(max_pages=1, query="internship", location="India"):
 
     return jobs
     
-
+@app.route("/jobs")
 def update_jobs():
     jobs = scrape_indeed(max_pages=5)
 
@@ -207,12 +207,22 @@ def update_jobs():
             new_count += 1
 
     return f"✅ Added {new_count} new internships from Indeed."
+
 @app.route("/health")
 def health():
     return "OK", 200
     
+@app.route("/update_all")
+def update_all():
+    # Run Internshala update
+    internshala_result = update_internshala()
 
+    # Run Indeed update
+    indeed_result = update_jobs()
+
+    return f"internshala => {internshala_result}\n Indeed => {indeed_result}"
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 10000))  # Render assigns PORT dynamically
+    app.run(host="0.0.0.0", port=port, debug=True)
