@@ -109,6 +109,7 @@ def scrape_internshala(max_pages=3):
 
 
 @app.route("/")
+@app.route("/")
 def update_internshala():
     internships = scrape_internshala(max_pages=10)
 
@@ -127,12 +128,12 @@ def update_internshala():
             sheet1.insert_row(internship, 2)
             new_count += 1
 
-            # Prepare color formatting request for this row
+            # ---- COLOR FORMATTING ----
             requests_body.append({
                 "updateCells": {
                     "range": {
-                        "sheetId": 0,  # usually first sheet = 0
-                        "startRowIndex": 1,  # row 2 (0-based index)
+                        "sheetId": 0,
+                        "startRowIndex": 1,  # row 2
                         "endRowIndex": 2,
                         "startColumnIndex": 0,
                         "endColumnIndex": 4
@@ -148,6 +149,34 @@ def update_internshala():
                 }
             })
 
+            # ---- ADD DROPDOWN TO COLUMN E ----
+            dropdown_rule = {
+                "setDataValidation": {
+                    "range": {
+                        "sheetId": 0,
+                        "startRowIndex": 1,  # row 2
+                        "endRowIndex": 2,
+                        "startColumnIndex": 4,  # column E
+                        "endColumnIndex": 5
+                    },
+                    "rule": {
+                        "condition": {
+                            "type": "ONE_OF_LIST",
+                            "values": [
+                                {"userEnteredValue": "Applying"},
+                                {"userEnteredValue": "Rejected"},
+                                {"userEnteredValue": "Not Suitable"},
+                                {"userEnteredValue": "Interview"},
+                                {"userEnteredValue": "Selected"}
+                            ]
+                        },
+                        "showCustomUi": True
+                    }
+                }
+            }
+
+            requests_body.append(dropdown_rule)
+
     # Apply batch formatting if new rows added
     if requests_body:
         service.spreadsheets().batchUpdate(
@@ -156,57 +185,6 @@ def update_internshala():
         ).execute()
 
     return f"✅ Added {new_count} new internships from Internshala."
-
-
-# -------------------------------
-# Indeed scraper
-# -------------------------------
-def scrape_indeed(max_pages=1, query="internship", location="India"):
-    base_url = "https://in.indeed.com/jobs"
-    jobs = []
-
-    for page in range(0, max_pages * 10, 10):  # 10 jobs per page
-        params = {"q": query, "l": location, "start": page}
-        response = requests.get(base_url, params=params, headers={"User-Agent": "Mozilla/5.0"})
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        listings = soup.find_all("div", class_="job_seen_beacon")
-        if not listings:
-            print(f"⚠️ No jobs found on page {page//10+1}")
-            continue
-
-        for listing in listings:
-            title_tag = listing.find("h2")
-            title = title_tag.get_text(strip=True) if title_tag else "N/A"
-
-            company_tag = listing.find("span", class_="companyName")
-            company = company_tag.get_text(strip=True) if company_tag else "N/A"
-
-            location_tag = listing.find("div", class_="companyLocation")
-            loc = location_tag.get_text(strip=True) if location_tag else "N/A"
-
-            link_tag = listing.find("a")
-            link = "https://in.indeed.com" + link_tag["href"] if link_tag else "N/A"
-
-            jobs.append([title, company, loc, link])
-
-    return jobs
-    
-@app.route("/jobs")
-def update_jobs():
-    jobs = scrape_indeed(max_pages=5)
-
-    # Avoid duplicates (check existing links)
-    existing_links = sheet2.col_values(4)  # link is 4th column
-    new_count = 0
-
-    for job in jobs:
-        link = job[3]
-        if link not in existing_links:
-            sheet2.insert_row(job, 2)  # insert on top
-            new_count += 1
-
-    return f"✅ Added {new_count} new internships from Indeed."
 
 @app.route("/health")
 def health():
@@ -217,10 +195,7 @@ def update_all():
     # Run Internshala update
     internshala_result = update_internshala()
 
-    # Run Indeed update
-    indeed_result = update_jobs()
-
-    return f"internshala => {internshala_result}\n Indeed => {indeed_result}"
+    return f"internshala => {internshala_result}"
 
 
 if __name__ == "__main__":
